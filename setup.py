@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="ninja_vs_zombies",
-    version="0.0.2",
+    version="0.0.3",
     author="Pedro Adrian Pereira Martinez",
     author_email="pedro.martinez@ccc.ufcg.edu.br",
     license='MIT',
