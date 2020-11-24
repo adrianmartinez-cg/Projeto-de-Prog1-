@@ -5,19 +5,19 @@ from pygame import mixer
 from pygame.locals import *
 
 
-#Setting pygame
-clock=pygame.time.Clock()
-pygame.init()
-pygame.display.set_caption('Ninja vs Zombies')
-WINDOW_SIZE=(1280,768)
-screen = pygame.display.set_mode(WINDOW_SIZE,0,32)
-display = pygame.Surface((640,384))
-bg_image=pygame.image.load('sprites/tileset/BG/BG.png')
+#Iniciando pygame
+clock=pygame.time.Clock() #variavel que será usada para limitar o jogo à 60 fps
+pygame.init() # inicializa
+pygame.display.set_caption('Ninja vs Zombies') #definindo o título
+WINDOW_SIZE=(1280,768) #definindo tamanho da janela
+screen = pygame.display.set_mode(WINDOW_SIZE,0,32) #definindo janela
+display = pygame.Surface((640,384)) #superficie onde iremos desenhar os graficos do jogo
+bg_image=pygame.image.load('sprites/tileset/BG/BG.png') #imagem de fundo 
 mixer.music.load('sounds/Sundown Drive.mp3')
-mixer.music.play(-1)
+mixer.music.play(-1) # -1: carrega musica em loop
 
-
-def load_animations(path,finalframe,name,scale,colorkey,invertx):
+#funcao para carregar varios frames (animacao)
+def load_animations(path,finalframe,name,scale,colorkey,invertx): 
     animation_list=[]
     for i in range(finalframe+1):
         image=pygame.image.load(path+name+'__'+str(i)+'.png')
@@ -28,7 +28,7 @@ def load_animations(path,finalframe,name,scale,colorkey,invertx):
         animation_list.append(image)
     return animation_list
 
-#Player animations and rect
+#Carregando animacoes do player
 player_imgs_idle=load_animations('sprites/ninja/',9,'Idle',3.2,(255,255,255),False)
 player_imgs_idle_flip=load_animations('sprites/ninja/',9,'Idle',3.2,(255,255,255),True)
 player_imgs_run=load_animations('sprites/ninja/',9,'Run',3.2,(255,255,255),False)
@@ -39,40 +39,43 @@ player_imgs_throw=load_animations('sprites/ninja/',9,'Throw',3.2,(255,255,255),F
 player_imgs_throw_flip=load_animations('sprites/ninja/',9,'Throw',3.2,(255,255,255),True)
 player_imgs_jump_throw=load_animations('sprites/ninja/',9,'Jump_Throw',3.2,(255,255,255),False)
 player_imgs_jump_throw_flip=load_animations('sprites/ninja/',9,'Jump_Throw',3.2,(255,255,255),True)
-player_frame_i=0
-checkpoint_x=280
+player_frame_i=0 #variavel do tipo contador, para ir mudando as imagens a cada ciclo do while, para dar a sensacao de animacao
+checkpoint_x=280 #posicao inicial do jogador
 checkpoint_y=780
-player_rect=pygame.Rect(checkpoint_x,checkpoint_y,player_imgs_idle[0].get_width(),player_imgs_idle[0].get_height())
+player_rect=pygame.Rect(checkpoint_x,checkpoint_y,player_imgs_idle[0].get_width(),player_imgs_idle[0].get_height()) #retangulo para colisoes
 
-#Movement bools
+#Variaveis de movimento
 moving_right=False
 moving_left=False
-flip_right=True
+flip_right=True #lado onde o jogador está virado
 flip_left=False
 
-#Jumping variables
+#Variáveis de pulo
 player_y_momentum=0
 air_timer=0
 
-#Throw kunai
-kunai_state=False  #True : kunai was thrown (cannot throw)
-kunai_state_i=0
+#Variáveis de disparo do kunai
+kunai_state=False  #True : Foi jogado o kunai. Nao podemos atirar novamente até esperar alguns frames , ou até que ele colida
+kunai_state_i=0 #contador, ao atingir um certo valor o kunai some e podemos atirar novamente
 kunai_img=pygame.image.load('sprites/tileset/Object/Kunai_0.png')
 kunai_img=pygame.transform.smoothscale(kunai_img,(int(kunai_img.get_width()/3),int(kunai_img.get_height()/3)))
 kunai_img_flip=pygame.transform.flip(kunai_img,True,False)
 kunai_rect=pygame.Rect(2000,2000,kunai_img.get_width(),kunai_img.get_height())
+kunai_left=False
+kunai_right=False
+throwAnimation=False
 
-def kunai_throw(x,y,img,display):
+#Funcao que mantem o movimento do kunai, e mantem a variavel de estado em True 
+def kunai_throw(x,y,img,display): 
     global kunai_state
     kunai_state=True
-    display.blit(img,(x+10,y+18))
+    display.blit(img,(x+10,y+18)) 
     
-#Window scrolling
+#Variaveis para movimentar a tela
 true_scroll=[0,0]
 scroll=[0,0]
 
-#Tile mapping - 0 to 9 : ---
-#10 - A,11 - B,etc
+#Carrega os tiles (32x32) da pasta path
 def loadtiles(path,finalnum):
     tiles_img=[]
     for i in range(1,finalnum+1):
@@ -83,7 +86,7 @@ def loadtiles(path,finalnum):
 tiles_img=loadtiles('sprites/tileset/Tiles/',19)
 TILE_SIZE=tiles_img[0].get_width()
 
-#Tiles that reset player position
+#Guarda as coordenadas dos tiles que causam "game over"
 def danger_tiles(DANGER,gamemap):
     danger_coord=[]
     for i in range(len(gamemap)-1):
@@ -92,7 +95,7 @@ def danger_tiles(DANGER,gamemap):
                 danger_coord.append((32*j,32*i))
     return danger_coord
 
-#Function for loading map
+#Funcao para carregar o mapa
 def load_map(path):
     f=open(path + '.txt','r')
     data=f.read()
@@ -103,13 +106,13 @@ def load_map(path):
         gamemap.append(list(row))
     return gamemap
 
-#Setting which tiles dont collide , and also those whom reset the player´s position.
+#Define quais tiles nao colidem, e quais causariam game over
 COLLIDE_OFF=['H','I','0','J']
-DANGER=['H','J']
+DANGER=['H','J','I']
 gamemap=load_map('map2')
 danger_tiles=danger_tiles(DANGER,gamemap)
 
-#Checking if rect collides with any of the tiles
+#Funcao para verificar se ocorreu alguma colisao, de um certo retangulo em relacao a todos os tiles
 def collision_test(rect,tiles):
     hit_list=[] 
     for tile in tiles:
@@ -117,19 +120,19 @@ def collision_test(rect,tiles):
             hit_list.append(tile)
     return hit_list
 
-#Moves rect, according to its movement, if it is not colliding with tiles
+#Funcao para movimentar um retangulo 'rect' , de acordo com seu movimento[x,y] , caso nao esteja colidindo com nenhum tile
 def move(rect,movement,tiles):
     collision_types = {'top': False, 'bottom': False , 'right': False , 'left': False}
-    rect.x+=movement[0]
+    rect.x+=movement[0] #realiza movimento em x
     hit_list=collision_test(rect,tiles)
-    for tile in hit_list:
-        if movement[0] > 0:
+    for tile in hit_list: #retangulo colidiu
+        if movement[0] > 0: #colidiu com algo à direita
             rect.right = tile.left # .right = coord. x da borda direita , .left = coord.x da borda esquerda
             collision_types['right'] = True
-        elif movement[0] < 0:
+        elif movement[0] < 0:#colidiu com algo à esquerda
             rect.left = tile.right
             collision_types['left']=True
-    rect.y+=movement[1]
+    rect.y+=movement[1] #realiza movimento em y
     hit_list=collision_test(rect,tiles)
     for tile in hit_list:
         if movement[1] > 0:
@@ -140,18 +143,18 @@ def move(rect,movement,tiles):
             collision_types['top']=True
     return rect, collision_types
 
-#Setting game loop
+#Ambiente de jogo
 while True: 
-    #Init settings
+    #Configuracoes iniciais
     display.fill((146,244,255))
     display.blit(bg_image,(0,0))
     tile_rects= []
-    true_scroll[0] += ((player_rect.x-true_scroll[0])-200)/8 
-    true_scroll[1] += ((player_rect.y-true_scroll[1])-200)/8 
+    true_scroll[0] += ((player_rect.x-true_scroll[0])-200)/8
+    true_scroll[1] += ((player_rect.y-true_scroll[1])-200)/8
     scroll[0]=int(true_scroll[0])
     scroll[1]=int(true_scroll[1])
     
-    #Creates tileset , and defines images
+    #Desenha o mapa do jogo , e define retangulos de colisao
     for i in range(len(gamemap)-1): 
         for j in range(len(gamemap[0])):
             if gamemap[i][j] == '1':
@@ -199,19 +202,21 @@ while True:
             if gamemap[i][j] not in COLLIDE_OFF:
                 tile_rects.append(pygame.Rect(j*TILE_SIZE,i*TILE_SIZE,TILE_SIZE,TILE_SIZE))
     
-    #Setting player movement
+    #Movimento do jogador
     player_movement=[0,0]
     if moving_right:
         player_movement[0]+=3
         if flip_left:
             flip_left=False
             flip_right=True
+            throwAnimation=False
     if moving_left:
         player_movement[0]-=3
         if flip_right:
             flip_right=False
             flip_left=True
-    player_movement[1] += player_y_momentum
+            throwAnimation=False
+    player_movement[1] += player_y_momentum #gravidade
     player_y_momentum += 0.2
     if player_y_momentum > 3:
         player_y_momentum = 3
@@ -219,13 +224,13 @@ while True:
     #print(f'player x {player_rect.x}')
     #print(f'player y {player_rect.y}')
     
-    #If player touches dangerous tiles
+    #Caso o jogador caia em algum lugar que nao pode
     for i in range(len(danger_tiles)):
         if player_rect.x > danger_tiles[i][0] and player_rect.x < danger_tiles[i][0] +33 and player_rect.y > danger_tiles[i][1]-32 and player_rect.y < danger_tiles[i][1]:
             player_rect.x=checkpoint_x
             player_rect.y=checkpoint_y
     
-    #Correcting jumping variables
+    #Corrigindo as variaveis de pulo
     if player_collisions['bottom']:
         player_y_momentum = 0
         air_timer = 0
@@ -234,7 +239,7 @@ while True:
     else:
         air_timer += 1
 
-    #Player Animations 
+    #Animacoes do jogador 
     if player_frame_i<=44:
         player_frame_i+=1
     elif player_frame_i == 45:
@@ -246,37 +251,47 @@ while True:
         if air_timer <= 5:
             if flip_right:
                 display.blit(player_imgs_run[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
-            elif flip_left:
-                display.blit(player_imgs_run_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
         elif air_timer > 5:
             if flip_right:
-                display.blit(player_imgs_jump[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
-            elif flip_left:
-                display.blit(player_imgs_jump_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                if throwAnimation and kunai_state and kunai_state_i<45:
+                    display.blit(player_imgs_jump_throw[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_jump[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
     elif moving_left:
         if air_timer <= 5:
-            if flip_right:
-                display.blit(player_imgs_run[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
-            elif flip_left:
+            if flip_left:
                 display.blit(player_imgs_run_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
         elif air_timer > 5:
-            if flip_right:
-                display.blit(player_imgs_jump[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
-            elif flip_left:
-                display.blit(player_imgs_jump_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+            if flip_left:
+                if throwAnimation and kunai_state and kunai_state_i <45: 
+                    display.blit(player_imgs_jump_throw_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_jump_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
     else:
         if air_timer <= 5:
             if flip_right:
-                display.blit(player_imgs_idle[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                if throwAnimation and kunai_state and kunai_state_i< 45:
+                    display.blit(player_imgs_throw[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_idle[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
             elif flip_left:
-                display.blit(player_imgs_idle_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                if throwAnimation and kunai_state and kunai_state_i< 45:
+                    display.blit(player_imgs_throw_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_idle_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
         elif air_timer > 5:
             if flip_right:
-                display.blit(player_imgs_jump[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                if throwAnimation and kunai_state and kunai_state_i<45:
+                    display.blit(player_imgs_jump_throw[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_jump[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
             elif flip_left:
-                display.blit(player_imgs_jump_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                if throwAnimation and kunai_state and kunai_state_i<45:
+                    display.blit(player_imgs_jump_throw_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
+                else:
+                    display.blit(player_imgs_jump_flip[player_frame_i//5],(player_rect.x-scroll[0],player_rect.y-scroll[1]))
     
-    #Kunai movement
+    #Movimento do kunai
     if kunai_state:
         if kunai_state_i < 60:
             if kunai_right:
@@ -285,6 +300,7 @@ while True:
                 if kunai_collisions['left'] or kunai_collisions['right']:
                     kunai_state_i=0
                     kunai_state=False
+                    throwAnimation=False
                     kunai_rect=pygame.Rect(2000,2000,kunai_img.get_width(),kunai_img.get_height())
             elif kunai_left:
                 kunai_rect,kunai_collisions=move(kunai_rect,kunai_movement,tile_rects)
@@ -292,15 +308,16 @@ while True:
                 if kunai_collisions['left'] or kunai_collisions['right']:
                     kunai_state_i=0
                     kunai_state=False
+                    throwAnimation=False
                     kunai_rect=pygame.Rect(2000,2000,kunai_img.get_width(),kunai_img.get_height())
             kunai_state_i+=1
         elif kunai_state_i == 60:
             kunai_state_i=0
             kunai_rect=pygame.Rect(2000,2000,kunai_img.get_width(),kunai_img.get_height())
             kunai_state=False
+            throwAnimation=False
 
-
-    #Getting inputs
+    #Recebe inputs do teclado
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
@@ -313,7 +330,10 @@ while True:
             if event.key == K_UP:
                 if air_timer < 6:
                     player_y_momentum=-6
+                    if throwAnimation:
+                        throwAnimation=False
             if event.key == K_v and kunai_state == False:
+                throwAnimation=True
                 kunai_rect.x=player_rect.x+10
                 kunai_rect.y=player_rect.y+18
                 if flip_right:
@@ -334,8 +354,8 @@ while True:
                 player_frame_i=0
                 moving_left = False   
     
-    #Updating game screen
-    surf = pygame.transform.smoothscale(display,WINDOW_SIZE)
-    screen.blit(surf,(0,0))
+    #Atualizando a tela de jogo
+    surface = pygame.transform.smoothscale(display,WINDOW_SIZE) # Aumenta o tamanho da superficie que estamos desenhando o jogo para o tamanho da janela
+    screen.blit(surface,(0,0))
     pygame.display.update()
     clock.tick(60) 
