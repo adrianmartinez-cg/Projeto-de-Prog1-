@@ -6,3 +6,5 @@ Controls
 
 Arrow keys to move
 V - Throw kunai
+W - Debug
+SHIFT- Run
